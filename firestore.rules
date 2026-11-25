@@ -1,0 +1,170 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidServerTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidAmountCents(amount) {
+      return amount is int && amount > 0 && amount <= 100000000000;
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.type in ['EXPENSE', 'INCOME'] &&
+             isValidAmountCents(data.amountCents) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.occurredAt is timestamp &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 240)) &&
+             (!('recurringBillId' in data) || isValidId(data.recurringBillId)) &&
+             isValidServerTimestamp(data.createdAt) &&
+             isValidServerTimestamp(data.updatedAt);
+    }
+
+    function isValidCategoryBudget(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             isValidAmountCents(data.limitCents) &&
+             isValidServerTimestamp(data.createdAt) &&
+             isValidServerTimestamp(data.updatedAt);
+    }
+
+    function isValidRecurringBill(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+             isValidAmountCents(data.amountCents) &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.cadence in ['WEEKLY', 'MONTHLY', 'YEARLY'] &&
+             data.nextDueAt is timestamp &&
+             data.autoPay is bool &&
+             data.active is bool &&
+             isValidServerTimestamp(data.createdAt) &&
+             isValidServerTimestamp(data.updatedAt);
+    }
+
+    function isValidUserPreferences(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.currencyCode in ['USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD'] &&
+             isValidServerTimestamp(data.createdAt) &&
+             isValidServerTimestamp(data.updatedAt);
+    }
+
+    match /users/{userId}/transactions/{transactionId} {
+      allow get: if isOwner(userId) && isValidId(transactionId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(transactionId) &&
+                       incoming().keys().hasAll(['userId', 'type', 'amountCents', 'title', 'category', 'occurredAt', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'type', 'amountCents', 'title', 'category', 'note', 'occurredAt', 'recurringBillId', 'createdAt', 'updatedAt']) &&
+                       isValidTransaction(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(transactionId) &&
+                       isValidTransaction(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['type', 'amountCents', 'title', 'category', 'note', 'occurredAt', 'recurringBillId', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(transactionId);
+    }
+
+    match /users/{userId}/budgets/{budgetId} {
+      allow get: if isOwner(userId) && isValidId(budgetId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(budgetId) &&
+                       incoming().keys().hasAll(['userId', 'category', 'limitCents', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'category', 'limitCents', 'createdAt', 'updatedAt']) &&
+                       isValidCategoryBudget(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(budgetId) &&
+                       isValidCategoryBudget(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['category', 'limitCents', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(budgetId);
+    }
+
+    match /users/{userId}/bills/{billId} {
+      allow get: if isOwner(userId) && isValidId(billId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(billId) &&
+                       incoming().keys().hasAll(['userId', 'title', 'amountCents', 'category', 'cadence', 'nextDueAt', 'autoPay', 'active', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'title', 'amountCents', 'category', 'cadence', 'nextDueAt', 'autoPay', 'active', 'createdAt', 'updatedAt']) &&
+                       isValidRecurringBill(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(billId) &&
+                       isValidRecurringBill(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         incoming().diff(existing()).affectedKeys().hasOnly(['nextDueAt', 'updatedAt']) ||
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'amountCents', 'category', 'cadence', 'nextDueAt', 'autoPay', 'active', 'updatedAt'])
+                       );
+
+      allow delete: if isOwner(userId) && isValidId(billId);
+    }
+
+    match /users/{userId}/preferences/{prefId} {
+      allow get: if isOwner(userId) && isValidId(prefId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(prefId) &&
+                       incoming().keys().hasAll(['userId', 'currencyCode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'currencyCode', 'createdAt', 'updatedAt']) &&
+                       isValidUserPreferences(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(prefId) &&
+                       isValidUserPreferences(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['currencyCode', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(prefId);
+    }
+  }
+}

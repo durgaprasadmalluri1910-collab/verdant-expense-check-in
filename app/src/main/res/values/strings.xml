@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Verdant</string>
+    <string name="auth_tagline">Personal Finance Ledger</string>
+    <string name="auth_headline">Real-time clarity for every dollar.</string>
+    <string name="auth_subtitle">Track daily spending, monitor category budgets, and stay ahead of recurring bills across all your devices.</string>
+    <string name="auth_feature_sync_title">Live Cross-Device Sync</string>
+    <string name="auth_feature_sync_desc">Transactions and balances update instantly in the cloud.</string>
+    <string name="auth_feature_budget_title">Smart Budget Alerts</string>
+    <string name="auth_feature_budget_desc">Automatic 80% warnings and overspend callouts per category.</string>
+    <string name="auth_feature_analytics_title">Cashflow &amp; Bill Insights</string>
+    <string name="auth_feature_analytics_desc">Interactive 6-month trends, category breakdowns, and bill reminders.</string>
+    <string name="auth_sign_in_google">Sign in with Google</string>
+    <string name="auth_signing_in">Signing in…</string>
+    <string name="auth_checking_session">Checking session…</string>
+    <string name="auth_privacy_note">Your financial records are private and isolated to your Google account.</string>
+    <string name="cd_auth_hero">Verdant financial growth and ledger illustration</string>
+</resources>

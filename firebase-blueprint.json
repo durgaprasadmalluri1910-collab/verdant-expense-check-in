@@ -1,0 +1,183 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A personal income or expense transaction record owned by a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning user."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["EXPENSE", "INCOME"],
+          "description": "Whether the transaction is an expense or income."
+        },
+        "amountCents": {
+          "type": "integer",
+          "description": "Positive monetary amount in minor currency units (cents)."
+        },
+        "title": {
+          "type": "string",
+          "description": "Merchant or transaction title (1-80 chars)."
+        },
+        "category": {
+          "type": "string",
+          "description": "Spending or income category label (1-40 chars)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional user memo (max 240 chars)."
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the transaction occurred."
+        },
+        "recurringBillId": {
+          "type": "string",
+          "description": "Optional ID of the linked recurring bill."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "type", "amountCents", "title", "category", "occurredAt", "createdAt", "updatedAt"]
+    },
+    "CategoryBudget": {
+      "title": "CategoryBudget",
+      "description": "Monthly spending cap for an expense category.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning user."
+        },
+        "category": {
+          "type": "string",
+          "description": "Expense category name (1-40 chars)."
+        },
+        "limitCents": {
+          "type": "integer",
+          "description": "Positive monthly spending limit in minor currency units."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "category", "limitCents", "createdAt", "updatedAt"]
+    },
+    "RecurringBill": {
+      "title": "RecurringBill",
+      "description": "A recurring bill or subscription schedule.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning user."
+        },
+        "title": {
+          "type": "string",
+          "description": "Bill or subscription name (1-80 chars)."
+        },
+        "amountCents": {
+          "type": "integer",
+          "description": "Positive bill amount in minor currency units."
+        },
+        "category": {
+          "type": "string",
+          "description": "Expense category for logged payments (1-40 chars)."
+        },
+        "cadence": {
+          "type": "string",
+          "enum": ["WEEKLY", "MONTHLY", "YEARLY"],
+          "description": "Billing recurrence frequency."
+        },
+        "nextDueAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Next scheduled due date timestamp."
+        },
+        "autoPay": {
+          "type": "boolean",
+          "description": "Whether the bill is marked as autopay."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the recurring bill is active."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "amountCents", "category", "cadence", "nextDueAt", "autoPay", "active", "createdAt", "updatedAt"]
+    },
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "User finance preferences such as display currency.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owning user."
+        },
+        "currencyCode": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD"],
+          "description": "Preferred ISO currency code."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "currencyCode", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Real-time personal transactions owned by userId."
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/CategoryBudget" },
+      "description": "Monthly category spending budgets owned by userId."
+    },
+    "/users/{userId}/bills/{billId}": {
+      "schema": { "$ref": "#/entities/RecurringBill" },
+      "description": "Recurring bills and subscriptions owned by userId."
+    },
+    "/users/{userId}/preferences/{prefId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "User finance display preferences owned by userId."
+    }
+  }
+}
